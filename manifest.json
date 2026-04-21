@@ -1,0 +1,58 @@
+{
+  "manifest_version": "0.3",
+  "name": "ringover-mcp",
+  "display_name": "Ringover MCP",
+  "version": "1.0.0",
+  "description": "Serveur MCP pour l'API Ringover (utilisateurs, appels, transcriptions, résumés IA, moments clés).",
+  "long_description": "Ce bundle expose l'API publique Ringover à Claude via le Model Context Protocol. Il fournit des outils pour lister les utilisateurs, équipes, conversations et appels, ainsi que pour récupérer les transcriptions, résumés IA et moments clés de chaque appel. Le token API Ringover est saisi une seule fois dans la configuration de l'extension et reste stocké localement de manière sécurisée.",
+  "author": {
+    "name": "Weepo",
+    "url": "https://github.com/anasweepo/ringover-mcp-server"
+  },
+  "homepage": "https://github.com/anasweepo/ringover-mcp-server",
+  "documentation": "https://developer.ringover.com/",
+  "support": "https://github.com/anasweepo/ringover-mcp-server/issues",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/index.js"
+      ],
+      "env": {
+        "RINGOVER_API_KEY": "${user_config.ringover_api_key}"
+      }
+    }
+  },
+  "tools": [
+    { "name": "Annuaire · Lister les utilisateurs",       "description": "[Lecture seule] Liste les utilisateurs de votre espace Ringover." },
+    { "name": "Annuaire · Lister les équipes",            "description": "[Lecture seule] Liste les équipes de votre espace Ringover." },
+
+    { "name": "Messagerie · Lister les conversations",    "description": "[Lecture seule] Liste les conversations (SMS / chat) Ringover." },
+
+    { "name": "Appels · Historique récent",               "description": "[Lecture seule] Récupère les appels récents, filtrable par plage de dates." },
+    { "name": "Appels · Transcription",                   "description": "[Lecture seule] Récupère la transcription texte d'un appel (Empower)." },
+    { "name": "Appels · Résumé IA (Empower)",             "description": "[Lecture seule] Récupère le résumé IA d'un appel." },
+    { "name": "Appels · Moments clés (Empower)",          "description": "[Lecture seule] Récupère les moments clés détectés par l'IA dans un appel." }
+  ],
+  "tools_generated": false,
+  "keywords": ["ringover", "telephony", "voip", "calls", "empower", "mcp"],
+  "license": "MIT",
+  "user_config": {
+    "ringover_api_key": {
+      "type": "string",
+      "title": "Ringover API Key",
+      "description": "Votre token API Ringover (Dashboard › Développeurs › API). Il est stocké localement et transmis uniquement au serveur MCP via la variable d'environnement RINGOVER_API_KEY.",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  }
+}
