@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "ringover-mcp",
   "display_name": "Ringover MCP",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "Serveur MCP pour l'API Ringover (utilisateurs, appels, transcriptions, résumés IA, moments clés).",
   "long_description": "Ce bundle expose l'API publique Ringover à Claude via le Model Context Protocol. Il fournit des outils pour lister les utilisateurs, équipes, conversations et appels, ainsi que pour récupérer les transcriptions, résumés IA et moments clés de chaque appel. Le token API Ringover est saisi une seule fois dans la configuration de l'extension et reste stocké localement de manière sécurisée.",
   "author": {
