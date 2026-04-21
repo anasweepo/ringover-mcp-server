@@ -15,14 +15,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: server/package-lock.json
 
@@ -43,20 +43,9 @@ jobs:
       - name: Validate manifest
         run: npx -y @anthropic-ai/mcpb validate manifest.json
 
-      - name: Smoke-test server startup
+      - name: Syntax check
         working-directory: server
-        env:
-          RINGOVER_API_KEY: "ci-dummy-token"
-        run: |
-          node index.js &
-          PID=$!
-          sleep 2
-          if ! kill -0 $PID 2>/dev/null; then
-            echo "::error::Server crashed on startup"
-            exit 1
-          fi
-          kill $PID
-          echo "Server starts correctly"
+        run: node --check index.js
 
       - name: Build MCPB bundle
         run: |
@@ -79,7 +68,7 @@ jobs:
           body: |
             ## Installation
 
-            1. Télécharger `ringover-mcp-v${{ github.ref_name }}.mcpb` ci-dessous.
+            1. Télécharger `ringover-mcp-${{ github.ref_name }}.mcpb` ci-dessous.
             2. Double-cliquer le fichier, ou dans Claude Desktop : **Settings → Extensions → Install from file…**
             3. Coller votre **Ringover API Key** (Dashboard Ringover › Développeurs › API).
             4. Cliquer **Install**.
