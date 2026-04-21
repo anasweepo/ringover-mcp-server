@@ -1,78 +1,124 @@
-# ringover-mcp-server
+# Ringover MCP
 
-Serveur MCP pour l’intégration avec l’API Ringover, permettant d’accéder et d’exploiter différentes ressources via des endpoints structurés. Conçu pour faciliter l’interconnexion avec des outils et services tiers, il offre une base fiable pour la consultation et la manipulation des données Ringover dans divers contextes d’usage.
+Bundle **MCPB** (Claude Desktop Extension) pour l'API Ringover. Serveur MCP **pur Node stdio, headless** — aucune UI React, aucun serveur HTTP côté client.
 
+Une fois installé, Claude peut interroger vos utilisateurs, équipes, conversations, appels, transcriptions, résumés IA et moments clés Ringover via le Model Context Protocol.
 
-Bundle **MCPB** (Claude Desktop Extension) pour l'API Ringover. Une fois installé, Claude peut interroger vos utilisateurs, équipes, conversations, appels, transcriptions, résumés IA et moments clés Ringover via le protocole MCP.
+Le token API Ringover est saisi **une seule fois** dans l'UI de Claude Desktop au moment de l'installation (champ masqué, stocké localement dans le trousseau OS).
 
-Le token API Ringover est saisi **une seule fois** dans l'UI de Claude Desktop au moment de l'installation (champ sensible, stocké localement).
+---
 
 ## Installation (utilisateur final)
 
-1. Télécharger `ringover-mcp.mcpb` depuis la page Releases.
-2. Double-cliquer le fichier, ou dans Claude Desktop : **Settings → Extensions → Install from file…**
-3. Coller votre **Ringover API Key** dans le champ demandé (Dashboard Ringover → Développeurs → API).
-4. Cliquer **Install**. L'extension apparaît activée, les outils sont immédiatement disponibles.
+1. Aller sur la page [Releases](https://github.com/anasweepo/ringover-mcp-server/releases) du repo.
+2. Télécharger le fichier `ringover-mcp-vX.Y.Z.mcpb` attaché à la dernière release.
+3. Double-cliquer le fichier, ou dans Claude Desktop : **Settings → Extensions → Install from file…**
+4. Coller votre **Ringover API Key** dans le champ demandé (Dashboard Ringover → Développeurs → API).
+5. Cliquer **Install**.
 
-Aucune installation Node, `npx`, ni configuration manuelle de `claude_desktop_config.json` n'est requise.
+Aucune installation de Node, `npx`, ni édition manuelle de `claude_desktop_config.json` n'est requise.
 
-## Outils exposés
+> ⚠️ Ne téléchargez pas le `.mcpb` depuis le code source (`Code` → `Download ZIP`) : il n'y est pas. Le `.mcpb` est **uniquement** un asset de Release, généré par la CI sur chaque tag `v*`.
 
-| Outil | Description |
-| --- | --- |
-| `get_users` | Liste les utilisateurs Ringover |
-| `get_teams` | Liste les équipes |
-| `get_conversations` | Liste les conversations |
-| `get_calls` | Appels récents (filtrable par plage de dates) |
-| `get_transcription` | Transcription d'un appel (par UUID) |
-| `get_summary` | Résumé IA d'un appel |
-| `get_moments` | Moments clés d'un appel |
+---
 
-## Build du `.mcpb` (mainteneurs)
+## Outils exposés (tous en lecture seule)
 
-Prérequis : Node.js ≥ 18.
+| Titre affiché dans Claude             | Description                                              |
+| ------------------------------------- | -------------------------------------------------------- |
+| **Annuaire** · Lister les utilisateurs | Utilisateurs de l'espace Ringover                        |
+| **Annuaire** · Lister les équipes     | Équipes de l'espace Ringover                             |
+| **Messagerie** · Lister les conversations | Conversations SMS / chat                              |
+| **Appels** · Historique récent        | Appels récents, filtrable par plage ISO                  |
+| **Appels** · Transcription            | Transcription texte d'un appel (Empower)                 |
+| **Appels** · Résumé IA (Empower)      | Résumé IA d'un appel                                     |
+| **Appels** · Moments clés (Empower)   | Moments clés détectés par l'IA                           |
+
+Tous les outils sont annotés `readOnlyHint: true` au niveau protocole MCP — Claude sait qu'aucun ne modifie l'état Ringover.
+
+---
+
+## Architecture
+
+```
+ringover-mcp/
+├── .github/workflows/release.yml   ← CI : build + publish .mcpb sur chaque tag v*
+├── manifest.json                   ← metadata MCPB + user_config (token)
+├── README.md
+├── .gitignore                      ← *.mcpb, node_modules/, .env
+├── .mcpbignore                     ← exclut les fichiers inutiles du bundle
+└── server/
+    ├── index.js                    ← serveur MCP Node stdio pur
+    ├── package.json
+    ├── package-lock.json
+    └── node_modules/               ← dépendances bundlées dans le .mcpb
+```
+
+Le serveur est **pur stdio** : aucun port ouvert, aucun HTTP, aucune UI. Claude Desktop lance `node server/index.js` en sous-processus et dialogue via stdin/stdout (JSON-RPC).
+
+---
+
+## Publier une nouvelle version (mainteneur)
+
+La CI construit et publie le `.mcpb` automatiquement sur chaque tag `v*`.
 
 ```bash
-# 1. Installer les dépendances dans server/ (elles DOIVENT être bundlées)
+# 1. Bump la version dans manifest.json (doit correspondre exactement au tag)
+#    ex: "version": "1.0.1"
+
+git add manifest.json
+git commit -m "chore: bump version to 1.0.1"
+
+# 2. Créer et pousser le tag
+git tag v1.0.1
+git push origin main --tags
+```
+
+Le workflow `.github/workflows/release.yml` va alors :
+
+1. `checkout` + `setup-node@20`
+2. `npm ci --omit=dev` dans `server/` → installe **uniquement** les deps runtime
+3. Vérifier que `manifest.json.version === tag` (sinon échec)
+4. Valider le manifest (`mcpb validate`)
+5. Smoke-test du serveur (démarrage Node + arrêt)
+6. `mcpb pack` → `ringover-mcp-v1.0.1.mcpb`
+7. Calculer le SHA-256
+8. Créer la GitHub Release et y attacher le `.mcpb`
+
+Aucun secret npm/registry n'est requis — tout se fait avec le `GITHUB_TOKEN` par défaut.
+
+---
+
+## Build local (optionnel, pour tester avant tag)
+
+```bash
 cd server
-npm install --omit=dev
+npm ci --omit=dev
 cd ..
-
-# 2. Packager l'extension
-npx @anthropic-ai/mcpb pack
+npx @anthropic-ai/mcpb validate manifest.json
+npx @anthropic-ai/mcpb pack . ringover-mcp-local.mcpb
 ```
 
-Le fichier `ringover-mcp.mcpb` est généré à la racine. C'est un simple zip contenant :
+---
 
+## Développement
+
+```bash
+cd server
+npm install
+RINGOVER_API_KEY=xxxxx node index.js
+# → ✅ Ringover MCP Server démarré (sur stderr)
 ```
-ringover-mcp.mcpb
-├── manifest.json
-├── README.md
-└── server/
-    ├── index.js
-    ├── package.json
-    └── node_modules/        (dépendances bundlées)
-```
 
-## Structure du bundle
+Le process reste ouvert en attente d'un client MCP sur stdio.
 
-- `manifest.json` — métadonnées MCPB + `user_config.ringover_api_key` (sensitive) injecté en tant que variable d'environnement `RINGOVER_API_KEY`.
-- `server/index.js` — serveur MCP Node sur transport `stdio`.
-- `server/node_modules/` — `@modelcontextprotocol/sdk` et `zod` bundlés.
+---
 
 ## Sécurité
 
-- Le token Ringover ne transite **jamais** via le protocole MCP : il est passé au processus serveur en variable d'environnement locale, au démarrage.
-- Le champ est marqué `sensitive: true` dans le manifest → masqué dans l'UI et stocké dans le trousseau OS (Keychain / Credential Manager / libsecret).
-
-## Tester en local avant packaging
-
-```bash
-cd server
-RINGOVER_API_KEY=xxxxx node index.js
-```
-
-Le processus doit afficher `✅ Ringover MCP Server démarré` sur stderr.
+- Le token Ringover ne transite **jamais** via le protocole MCP : il est injecté dans le process serveur comme variable d'environnement locale.
+- Le champ est marqué `sensitive: true` → masqué dans l'UI et stocké dans le trousseau OS (Keychain / Credential Manager / libsecret).
+- Tous les outils sont en **lecture seule** (GET uniquement sur l'API publique Ringover).
 
 ## Licence
 
